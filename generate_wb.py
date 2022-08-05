@@ -11,7 +11,6 @@ if __name__ == '__main__':
     parser.add_argument("--input-file", help="the file containing the implicit (unencoded) and explicit affine layers")
     parser.add_argument("--irf-degree", type=int, choices=[2, 3, 4], help="the degree of the implicit encoded round functions")
     parser.add_argument("--output-file", help="the file to store the implicit encoded round functions and the external excodings")
-    #
     parser.add_argument("--seed", type=int, default=0, help="the seed used to generate random values (default: 0)")
     parser.add_argument("--trivial-affine-encodings", action="store_true", help="use trivial affine encodings")
     parser.add_argument("--trivial-quadratic-encodings", action="store_true", help="use trivial quadratic encodings")
