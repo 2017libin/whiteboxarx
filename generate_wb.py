@@ -26,9 +26,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    assert not os.path.isfile(args.output_file), f"{args.output_file} already exists"
+    assert not os.path.isfile(args.output_file), f"{args.output_file} already exists"  
     assert args.debug_file is None or not os.path.isfile(args.debug_file), f"{args.debug_file} already exists"
 
+    # 这里的隐函数应该为轮函数的隐函数
+    # 这里应该是 implicit_unencoded_affine_layers
     unimplicit_encoded_affine_layers, unencoded_explicit_affine_layers = sage.all.load(args.input_file, compress=True)
 
     SEED = args.seed
@@ -44,14 +46,14 @@ if __name__ == '__main__':
     PRINT_TIME_GENERATION = args.print_time_generation
     PRINT_DEBUG_GENERATION = args.print_debug_generation
 
-    if not USE_REDUNDANT_PERTURBATIONS:
+    if not USE_REDUNDANT_PERTURBATIONS:  # 不使用为True
         assert not TRIVIAL_RP
         TRIVIAL_RP = None
 
     # degree of the implicit encoded round functions
-    irf_degree = args.irf_degree
+    irf_degree = args.irf_degree  # irf 表示的是隐式的轮函数 implicit round function
 
-    if irf_degree == 2:
+    if irf_degree == 2:  # 阶为2，使用affine编码
         from whiteboxarx.implicit_wb_with_affine_encodings import get_implicit_encoded_round_funcions
 
         # affine encodings
@@ -61,7 +63,7 @@ if __name__ == '__main__':
                 SEED, USE_REDUNDANT_PERTURBATIONS,
                 TRIVIAL_EE, TRIVIAL_GA, TRIVIAL_RP, TRIVIAL_AE,
                 PRINT_TIME_GENERATION, PRINT_DEBUG_GENERATION)
-    elif irf_degree == 3 or irf_degree == 4:
+    elif irf_degree == 3 or irf_degree == 4:  # 隐式的轮函数阶为3/4，使用二次编码
         from whiteboxarx.implicit_wb_with_quadratic_encodings import get_implicit_encoded_round_funcions
 
         # quadratic encodings

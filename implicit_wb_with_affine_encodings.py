@@ -261,7 +261,7 @@ def get_redundant_perturbations(wordsize, rounds, degree_qi, bpr, TRIVIAL_RP, TR
 def get_implicit_encoded_round_funcions(
         implicit_affine_layers, filename,
         SEED, USE_REDUNDANT_PERTURBATIONS,
-        TRIVIAL_EE, TRIVIAL_GA, TRIVIAL_RP, TRIVIAL_AE,
+        TRIVIAL_EE, TRIVIAL_GA, TRIVIAL_RP, TRIVIAL_AE,  # EE 外部编码、GA 图自同构、RP 冗余扰动、AE 仿射编码
         PRINT_TIME_GENERATION, PRINT_DEBUG_GENERATION):
     """
     The argument implicit_affine_layers contains the affine layers of each round
@@ -273,7 +273,7 @@ def get_implicit_encoded_round_funcions(
     """
     rounds = len(implicit_affine_layers)
     assert 1 <= rounds
-    assert rounds == len(implicit_affine_layers)
+    assert rounds == len(implicit_affine_layers)  # 好像这句判断没啥用。。
 
     bpr_pmodadd = implicit_affine_layers[0][0].parent()
     ws = len(bpr_pmodadd.gens()) // 4
@@ -281,6 +281,7 @@ def get_implicit_encoded_round_funcions(
     # wordsize is the bit-size of one of the inputs of the modular addition
     # (half of the total blocksize since only 1 modular addition is supported)
 
+    # filename表示debug文件
     smart_print = get_smart_print(filename)
 
     if PRINT_TIME_GENERATION:
@@ -292,32 +293,35 @@ def get_implicit_encoded_round_funcions(
         smart_print(f" - TRIVIAL_EE, TRIVIAL_GA, TRIVIAL_RP, TRIVIAL_AE: {[TRIVIAL_EE, TRIVIAL_GA, TRIVIAL_RP, TRIVIAL_AE]}")
         smart_print()
 
-    assert ws == len(bpr_pmodadd.gens()) // 4
+    assert ws == len(bpr_pmodadd.gens()) // 4  # 好像这句判断没啥用。。
 
     implicit_pmodadd = [bpr_pmodadd(str(f)) for f in get_implicit_modadd_anf(ws, permuted=True, only_x_names=False)]
 
     if not USE_REDUNDANT_PERTURBATIONS:
-        num_ga = rounds
+        num_ga = rounds  # 不使用RP
     else:
-        redundant_perturbations = get_redundant_perturbations(ws, rounds, 1, bpr_pmodadd, TRIVIAL_RP, TRIVIAL_AE)
+        redundant_perturbations = get_redundant_perturbations(ws, rounds, 1, bpr_pmodadd, TRIVIAL_RP, TRIVIAL_AE)  # 获取冗余扰动
         num_rp_per_round = len(redundant_perturbations[0])
-        assert all(num_rp_per_round == len(redundant_perturbations[i]) for i in range(len(redundant_perturbations)))
+        assert all(num_rp_per_round == len(redundant_perturbations[i]) for i in range(len(redundant_perturbations)))  # 每轮使用的RP数量相同
 
         if PRINT_TIME_GENERATION:
             smart_print(f"{get_time()} | generated redundant perturbations")
 
         num_ga = rounds * num_rp_per_round
 
+    # 获取图自同构
     graph_automorphisms = get_graph_automorphisms(ws, num_ga, filename, TRIVIAL_GA, PRINT_DEBUG_GENERATION)
 
     if PRINT_TIME_GENERATION:
         smart_print(f"{get_time()} | generated graph automorphisms")
 
+    # 获取轮编码？
     implicit_round_encodings, explicit_extin_anf, explicit_extout_anf = get_implicit_affine_round_encodings(ws, rounds, TRIVIAL_EE, TRIVIAL_AE)
 
     if PRINT_TIME_GENERATION:
         smart_print(f"{get_time()} | generated implicit round encodings")
 
+    # 获取左置换
     left_permutations = get_random_affine_permutations(2 * ws, rounds, TRIVIAL_AE, bpr=bpr_pmodadd)
 
     if PRINT_TIME_GENERATION:
@@ -326,7 +330,7 @@ def get_implicit_encoded_round_funcions(
     implicit_round_functions = []
     list_degs = []
     for i in range(rounds):
-        if not USE_REDUNDANT_PERTURBATIONS:
+        if not USE_REDUNDANT_PERTURBATIONS:  # 不使用RP
             anf = compose_anf_fast(implicit_pmodadd, graph_automorphisms[i])
             anf = compose_anf_fast(anf, implicit_affine_layers[i])
             anf = compose_anf_fast(anf, implicit_round_encodings[i])
@@ -335,9 +339,9 @@ def get_implicit_encoded_round_funcions(
 
             degs = [f.degree() for f in anf]
             assert max(degs) == 2
-            list_degs.append(degs)
+            list_degs.append(degs)  # 列表中放列表？
 
-            implicit_round_functions.append(anf)
+            implicit_round_functions.append(anf)  # 隐式的轮函数
         else:
             list_anfs = []
             for index_rp, rp in enumerate(redundant_perturbations[i]):
