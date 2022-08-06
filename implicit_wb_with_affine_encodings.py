@@ -331,10 +331,10 @@ def get_implicit_encoded_round_funcions(
     list_degs = []
     for i in range(rounds):
         if not USE_REDUNDANT_PERTURBATIONS:  # 不使用RP
-            anf = compose_anf_fast(implicit_pmodadd, graph_automorphisms[i])
-            anf = compose_anf_fast(anf, implicit_affine_layers[i])
-            anf = compose_anf_fast(anf, implicit_round_encodings[i])
-            anf = list(left_permutations[i].matrix * sage.all.vector(bpr_pmodadd, anf))
+            anf = compose_anf_fast(implicit_pmodadd, graph_automorphisms[i])  # anf = T \circ U
+            anf = compose_anf_fast(anf, implicit_affine_layers[i])  # anf = T \circ U \circ AL
+            anf = compose_anf_fast(anf, implicit_round_encodings[i])  # anf = T \circ U \circ AL \circ RE
+            anf = list(left_permutations[i].matrix * sage.all.vector(bpr_pmodadd, anf))  # anf = V \circ anf
             assert bpr_pmodadd == implicit_affine_layers[i][0].parent()
 
             degs = [f.degree() for f in anf]
