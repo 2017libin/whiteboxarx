@@ -122,15 +122,14 @@ def get_implicit_unencoded_affine_layers(
 
     # 生成轮密钥
     round_keys = get_round_keys(speck_instance, rounds, master_key)
-
     for i in range(len(round_keys)):
         round_keys[i] = bitvectors_to_gf2vector(round_keys[i], 0)
 
-    #  获取隐式表达式的组件 x + y (mod 2^ws) = z
+    #  获取隐式表达式的组件 (x,y,z,t) = (x^y^z,y^t)
     implicit_pmodadd = get_implicit_modadd_anf(ws, permuted=True, only_x_names=only_x_names)  # if permuted=Ture, 返回(x,y,z)和 y^t 的 bool_poly, (x,y,z)的bool_poly等于0当且仅当x+y=z时
     bpr_pmodadd = implicit_pmodadd[0].parent()
     bpr_pmodadd = BooleanPolynomialRing(names=bpr_pmodadd.variable_names(), order="deglex")
-    implicit_pmodadd = [bpr_pmodadd(str(f)) for f in implicit_pmodadd]  # 转换为列表的形式
+    implicit_pmodadd = [bpr_pmodadd(str(f)) for f in implicit_pmodadd]  # 转换为列表的形式  (x,y,z,t) = (x^y^z, y^t)
 
     # compose_affine(L_m, L_t, R_m, R_t)，返回(M,t)满足L_m(R_m*x+R_t)+L_t = M*x + t
     # [x, y] = [x>>>alpha, x^(y<<<beta)]
@@ -151,19 +150,18 @@ def get_implicit_unencoded_affine_layers(
             # 3. affine = compose_affine(rotateright_identity_matrix, 0, affine[0], affine[1])
             affine = compose_affine(aux_linear_layer, 0, identity_matrix(2*ws), round_keys[i])  # 相当于上面3步
             
-            # 生成隐式的affine: (matrix*[x x]) ^ cta = [affine[x], x]，[x, x] 和 [affine[x], x]均为列向量，x表示一个分组
             matrix = sage.all.block_matrix(bpr, 2, 2, [  # 2n*2n matrix，n是分组长度
                 [affine[0], zero_matrix(2*ws, 2*ws)],
                 [zero_matrix(2*ws, 2*ws), identity_matrix(2*ws)]]) # 对角矩阵
             cta = list(affine[1]) + [0 for _ in range(2*ws)]  # 将affine[1] 转换为列表形式
             
             # anf就是boo_poly的集合，其中每个boo_poly表示结果的每个bit
-            anf = matrix2anf(matrix, bool_poly_ring=bpr_pmodadd, bin_vector=cta)
+            anf = matrix2anf(matrix, bool_poly_ring=bpr_pmodadd, bin_vector=cta)  # anf(x,y,z,t) = (x',y',z,t)，(x',y')=affine(x,y)
             
             if not return_implicit_round_functions:
                 implicit_round_functions.append(anf)  # return_implicit_round_functions 为 false, 只返回隐式的仿射层 (y,x)
             else:
-                implicit_round_functions.append(compose_anf_fast(implicit_pmodadd, anf))
+                implicit_round_functions.append(compose_anf_fast(implicit_pmodadd, anf))  # 先过anf，再过implicit
             if return_also_explicit_affine_layers:
                 explicit_affine_layers.append(affine)
         
@@ -192,7 +190,7 @@ def get_implicit_unencoded_affine_layers(
                 [identity_matrix(2*ws), zero_matrix(2*ws, 2*ws)],
                 [zero_matrix(2*ws, 2*ws), aux]])
             cta = [0 for _ in range(2*ws)] + list(aux * affine[1])
-            anf2 = matrix2anf(matrix, bool_poly_ring=bpr_pmodadd, bin_vector=cta)  # anf2(x,x) = (x, A^(-1)(x))
+            anf2 = matrix2anf(matrix, bool_poly_ring=bpr_pmodadd, bin_vector=cta)  # anf2(x,y,z,t) = (x,y,z',t')  # (z',t') = A^(-1)(z,t)
 
             anf = compose_anf_fast(anf1, anf2)  # anf(x,x) = (A_{R-2}(x), A_{R-1}^(-1)(x))
 
