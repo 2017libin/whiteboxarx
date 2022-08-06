@@ -77,19 +77,23 @@ def get_implicit_encoded_round_funcions(
 
     assert ws == len(bpr_pmodadd.gens()) // 4
 
+    # 获取S的anf
     implicit_pmodadd = [bpr_pmodadd(str(f)) for f in get_implicit_modadd_anf(ws, permuted=True, only_x_names=False)]
 
+    # 获取T的图自同构 U
     graph_automorphisms = get_graph_automorphisms(ws, rounds, filename, TRIVIAL_GA, PRINT_DEBUG_GENERATION)
 
     if PRINT_TIME_GENERATION:
         smart_print(f"{get_time()} | generated graph automorphisms")
-
+    
+    # 获取E的自等价的合并 (A^(i)\circ B^(i-1))
     explicit_affine_quadratic_se_encodings, explicit_affine_quadratic_extin_anf, explicit_affine_quadratic_extout_anf = \
         get_explicit_affine_quadratic_se_encodings(ws, explicit_affine_layers, graph_automorphisms, filename, CUBIC_IRF, MAX_DEG_IRF, TRIVIAL_EE, TRIVIAL_QE, PRINT_DEBUG_GENERATION)
 
     if PRINT_TIME_GENERATION:
         smart_print(f"{get_time()} | generated affine-quadratic self-equivalences")
-
+    
+    # 获取内部编码和外部编码
     implicit_affine_round_encodings, explicit_affine_extin_anf, explicit_affine_extout_anf = get_implicit_affine_round_encodings(ws, rounds, TRIVIAL_EE, TRIVIAL_AE)
 
     explicit_extin_anf = list(compose_anf_fast(explicit_affine_extin_anf, explicit_affine_quadratic_extin_anf))
@@ -97,7 +101,8 @@ def get_implicit_encoded_round_funcions(
 
     if PRINT_TIME_GENERATION:
         smart_print(f"{get_time()} | generated implicit round encodings")
-
+    
+    # 获取V
     left_permutations = get_random_affine_permutations(2 * ws, rounds, TRIVIAL_AE, bpr=bpr_pmodadd)
 
     if PRINT_TIME_GENERATION:
@@ -112,14 +117,13 @@ def get_implicit_encoded_round_funcions(
     implicit_round_functions = []
     list_degs = []
     for i in range(rounds):
-        anf = compose_anf_fast(implicit_pmodadd, graph_automorphisms[i])
-        anf = compose_anf_fast(anf, implicit_affine_layers[i])
+        anf = compose_anf_fast(implicit_pmodadd, graph_automorphisms[i])  # T\circ U^(i)
+        anf = compose_anf_fast(anf, implicit_affine_layers[i])  # T\circ U^(i)\circ affine
+        aq_layer = tuple(bpr_pmodadd(str(f)) for f in explicit_affine_quadratic_se_encodings[i]) + bpr_pmodadd.gens()[2*ws:4*ws]  # 拼接元组
+        anf = compose_anf_fast(anf, aq_layer)  # T\circ U^(i)\circ affine\circ ((A^(i)\circ B^(i-1)). Id)
         #
-        aq_layer = tuple(bpr_pmodadd(str(f)) for f in explicit_affine_quadratic_se_encodings[i]) + bpr_pmodadd.gens()[2*ws:4*ws]
-        anf = compose_anf_fast(anf, aq_layer)
-        #
-        anf = compose_anf_fast(anf, implicit_affine_round_encodings[i])
-        anf = list(left_permutations[i].matrix * sage.all.vector(bpr_pmodadd, anf))
+        anf = compose_anf_fast(anf, implicit_affine_round_encodings[i])  # T\circ U^(i)\circ affine\circ ((A^(i)\circ B^(i-1)). Id) \circ (C^(i)^(-1),C^(i+1)^(-1))
+        anf = list(left_permutations[i].matrix * sage.all.vector(bpr_pmodadd, anf))  # V^(i) \circ T\circ U^(i)\circ affine\circ ((A^(i)\circ B^(i-1)). Id) \circ (C^(i)^(-1),C^(i+1)^(-1))
         assert bpr_pmodadd == implicit_affine_layers[i][0].parent()
 
         degs = [f.degree() for f in anf]

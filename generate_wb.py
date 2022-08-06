@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 if __name__ == '__main__':
     parser = ArgumentParser(prog="sage -python generate_wb.py", description="Generate an implicit white-box implementation of a given ARX cipher")
     parser.add_argument("--input-file", help="the file containing the implicit (unencoded) and explicit affine layers")
-    parser.add_argument("--irf-degree", type=int, choices=[2, 3, 4], help="the degree of the implicit encoded round functions")
+    parser.add_argument("-- ", type=int, choices=[2, 3, 4], help="the degree of the implicit encoded round functions")
     parser.add_argument("--output-file", help="the file to store the implicit encoded round functions and the external excodings")
     parser.add_argument("--seed", type=int, default=0, help="the seed used to generate random values (default: 0)")
     parser.add_argument("--trivial-affine-encodings", action="store_true", help="use trivial affine encodings")
@@ -35,9 +35,9 @@ if __name__ == '__main__':
     SEED = args.seed
     sage.all.set_random_seed(SEED)
 
-    TRIVIAL_AE = args.trivial_affine_encodings
-    TRIVIAL_QE = args.trivial_quadratic_encodings
-    TRIVIAL_EE = args.trivial_external_encodings
+    TRIVIAL_AE = args.trivial_affine_encodings  # AE指的是(I,O)中的C
+    TRIVIAL_QE = args.trivial_quadratic_encodings  
+    TRIVIAL_EE = args.trivial_external_encodings  # EE指的是外部编码  
     TRIVIAL_RP = args.trivial_redundant_perturbations
     TRIVIAL_GA = args.trivial_graph_automorphisms
     USE_REDUNDANT_PERTURBATIONS = not args.disable_redundant_perturbations
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     # degree of the implicit encoded round functions
     irf_degree = args.irf_degree  # irf 表示的是隐式的轮函数 implicit round function
 
-    if irf_degree == 2:  # 阶为2，使用affine编码
+    if irf_degree == 2:  # 阶为2，E^{(i)}自等价使用Id
         from whiteboxarx.implicit_wb_with_affine_encodings import get_implicit_encoded_round_funcions
 
         # affine encodings

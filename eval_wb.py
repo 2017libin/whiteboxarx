@@ -20,7 +20,7 @@ def bitvectors_to_gf2vector(x, y, ws):
 def gf2vector_to_bitvectors(v, ws):
     return vector2int(v[:ws]), vector2int(v[ws:])
 
-
+# 返回一个加密函数
 def get_eval_implicit_wb_implementation(
         wordsize, implicit_encoded_round_functions,
         USE_REDUNDANT_PERTURBATIONS,
@@ -55,6 +55,7 @@ def get_eval_implicit_wb_implementation(
         else:
             bpr_pmodadd = implicit_encoded_round_functions[0][0][0][0].parent()  # round 0, perturbed system 0, anf, component Boolean function 0
 
+    # 
     ordered_replacement = []
     assert len(bpr_pmodadd.gens()) == 4*ws
     for i in range(4*ws):
@@ -65,6 +66,7 @@ def get_eval_implicit_wb_implementation(
 
     output_vars = bpr_pmodadd.gens()[2*ws: 4*ws]
 
+    # 
     def eval_round_function(v, round_index):
         ordered_replacement_copy = ordered_replacement[:]
         for i in range(2 * ws):
@@ -243,10 +245,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     assert args.plaintext is not None
+    # output_file 用来存储密文/调试信息
     assert args.output_file is None or not os.path.isfile(args.output_file), f"{args.output_file} already exists"
 
     implicit_encoded_round_functions, explicit_extin_anf, explicit_extout_anf = sage.all.load(args.input_file, compress=True)
 
+    # 如果没有外部编码
     if not args.cancel_external_encodings:
         explicit_extin_anf, explicit_extout_anf = None, None
 
@@ -268,12 +272,16 @@ if __name__ == '__main__':
 
     smart_print = get_smart_print(args.output_file)
 
+    # hex_str -> hex_byte
     plaintext = tuple(map(lambda p: int(p, 16), args.plaintext))
 
+    # 
     if args.print_debug_intermediate_values:
         smart_print(f"Evaluating implicit white-box implementation with input ({plaintext[0]:x}, {plaintext[1]:x})\n")
-
+    # the vector of words -> the vector of bits
     plaintext = bitvectors_to_gf2vector(*plaintext, ws)
+    print(plaintext)
+    exit(1)
     ciphertext = eval_wb(plaintext)
     ciphertext = gf2vector_to_bitvectors(ciphertext, ws)
 

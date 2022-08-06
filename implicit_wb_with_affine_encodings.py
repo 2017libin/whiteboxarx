@@ -16,10 +16,12 @@ from boolcrypt.modularaddition import get_implicit_modadd_anf
 
 _DEBUG_SPLIT_RP = False  # do not merge the redundant perturbations with the implicit round functions, _DEBUG_SPLIT_RP=True only meant for debugging
 
-
+# 类似结构体？
 AffineEncoding = collections.namedtuple('AffineEncoding', ['matrix', 'cta', 'bitsize', 'inverse'])
 
 
+# 获取bitsize的随机affine置换，返回(M,cta)，其中M是可逆
+# TRIVIAL_AE为True，返回的是(Id,0)
 def get_random_affine_permutations(bitsize, number_of_permutations, TRIVIAL_AE, bpr=None):
     vs = sage.all.VectorSpace(sage.all.GF(2), bitsize)
 
@@ -47,6 +49,7 @@ def get_random_affine_permutations(bitsize, number_of_permutations, TRIVIAL_AE, 
         #     bitsize,
         #     inverse=None
         # )
+        # 类似于返回一个结构体
         affine_encoding = AffineEncoding(
             matrix,
             cta,
@@ -61,11 +64,11 @@ def get_random_affine_permutations(bitsize, number_of_permutations, TRIVIAL_AE, 
 
     return affine_encodings
 
-
+# 获取编码：内部编码和外部编码
 def get_implicit_affine_round_encodings(wordsize, rounds, TRIVIAL_EE, TRIVIAL_AE):
     if not TRIVIAL_EE and TRIVIAL_AE:
         raise ValueError("using non-trivial external encoding with trivial affine encodings is not supported")
-
+    
     ws = wordsize
 
     bpr = sage.all.GF(2)
@@ -83,28 +86,33 @@ def get_implicit_affine_round_encodings(wordsize, rounds, TRIVIAL_EE, TRIVIAL_AE
 
     implicit_round_encodings = [None for _ in range(rounds)]
 
+    # 内部编码中的C：(A^i\circ B^(i-1)\circ (C^i)^(-1), C^(i+1))
     affine_encodings = get_random_affine_permutations(2 * ws, rounds - 1, TRIVIAL_AE)
 
     for i in range(rounds):
+        # 第一轮的编码
         if i == 0:
-            if TRIVIAL_EE:
+            if TRIVIAL_EE:  # 使用恒等变换
                 input_ee_matrix = identity_matrix(2*ws)
                 input_ee_cta = [0 for _ in range(2*ws)]
             else:
-                input_ee = get_random_affine_permutations(2 * ws, 1, TRIVIAL_AE)[0]
+                input_ee = get_random_affine_permutations(2 * ws, 1, TRIVIAL_AE)[0]  # input_ee: 外部的输入编码
                 input_ee_matrix = input_ee.matrix
                 input_ee_cta = list(input_ee.cta)
+            # (x1,x2,y1,y2) = (x1',x2',y1',y2') 满足 (x1',x2') =
             matrix = sage.all.block_matrix(bpr, 2, 2, [
                 [input_ee_matrix, zero_matrix(2*ws, 2*ws)],
                 [zero_matrix(2*ws, 2*ws), affine_encodings[i].matrix]])
             cta = input_ee_cta + list(affine_encodings[i].cta)
             implicit_round_encodings[i] = matrix2anf(matrix, bool_poly_ring=bpr_pmodadd, bin_vector=cta)
         elif 1 <= i < rounds - 1:
+            # 为什么这里的输入编码不是上一轮输入的逆 ？ 
             matrix = sage.all.block_matrix(bpr, 2, 2, [
                 [affine_encodings[i-1].matrix, zero_matrix(2*ws, 2*ws)],
                 [zero_matrix(2*ws, 2*ws), affine_encodings[i].matrix]])
             cta = list(affine_encodings[i-1].cta) + list(affine_encodings[i].cta)
             implicit_round_encodings[i] = matrix2anf(matrix, bool_poly_ring=bpr_pmodadd, bin_vector=cta)
+        # 最后一轮的编码
         else:
             assert i == rounds - 1
             if TRIVIAL_EE:
@@ -125,16 +133,20 @@ def get_implicit_affine_round_encodings(wordsize, rounds, TRIVIAL_EE, TRIVIAL_AE
         explicit_extout_anf = bpr_pmodadd.gens()[:2*ws]
     else:
         aux_matrix = input_ee.matrix.inverse()
+        # 输入编码的逆
         explicit_extin_anf = matrix2anf(aux_matrix, bool_poly_ring=bpr_pmodadd, bin_vector=aux_matrix * input_ee.cta)
+        # 输出编码的逆
         explicit_extout_anf = matrix2anf(output_ee.matrix, bool_poly_ring=bpr_pmodadd, bin_vector=output_ee.cta)
 
     bpr_xy = BooleanPolynomialRing(names=bpr_pmodadd.variable_names()[:2*ws], order="deglex")
+    # 转成list的形式返回
     explicit_extin_anf = [bpr_xy(str(f)) for f in explicit_extin_anf]
     explicit_extout_anf = [bpr_xy(str(f)) for f in explicit_extout_anf]
 
     return implicit_round_encodings, explicit_extin_anf, explicit_extout_anf
 
-
+# 获取图同态
+# TRIVIAL_GA为True：返回(Id, 0)的anf
 def get_graph_automorphisms(wordsize, rounds, filename, TRIVIAL_GA, PRINT_DEBUG_GENERATION):
     ws = wordsize
 
@@ -258,6 +270,8 @@ def get_redundant_perturbations(wordsize, rounds, degree_qi, bpr, TRIVIAL_RP, TR
     return list_redundant_perturbations
 
 
+# TRIVIAL_EE为True：外部编码使用的affine permutation为 (Id, 0)
+# TRIVIAL_AE为True：1. U使用(Id, 0)  2. (I,O)中的C使用(Id, 0)
 def get_implicit_encoded_round_funcions(
         implicit_affine_layers, filename,
         SEED, USE_REDUNDANT_PERTURBATIONS,
@@ -315,13 +329,15 @@ def get_implicit_encoded_round_funcions(
     if PRINT_TIME_GENERATION:
         smart_print(f"{get_time()} | generated graph automorphisms")
 
-    # 获取轮编码？
+    # 获取轮编码: 
+    # implicit_round_encoding 表示的是 
+    # explicit_extin_anf和explicit_extout_anf 表示的是 input_ee_inv和output_ee的anf
     implicit_round_encodings, explicit_extin_anf, explicit_extout_anf = get_implicit_affine_round_encodings(ws, rounds, TRIVIAL_EE, TRIVIAL_AE)
 
     if PRINT_TIME_GENERATION:
         smart_print(f"{get_time()} | generated implicit round encodings")
 
-    # 获取左置换
+    # 获取左置换：只使用了M，没有用cta。相当于获取linear permutation
     left_permutations = get_random_affine_permutations(2 * ws, rounds, TRIVIAL_AE, bpr=bpr_pmodadd)
 
     if PRINT_TIME_GENERATION:
