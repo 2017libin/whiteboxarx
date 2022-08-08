@@ -1,7 +1,7 @@
 # export PYTHONPATH=".../boolcrypt-master:.../whiteboxarx-master"
 
 # Generating the affine layers
-# sage -python speck.py --key 1918 1110 0908 0100 --block-size 32 --output-file speck32_64_affine_layers.sobj 
+sage -python speck.py --key 1918 1110 0908 0100 --block-size 32 --output-file speck32_64_affine_layers.sobj 
 
 # Generating the implicit round functions
 # sage -python generate_wb.py --input-file speck32_64_affine_layers.sobj --irf-degree 3 --output-file speck32_64_irf.sobj
