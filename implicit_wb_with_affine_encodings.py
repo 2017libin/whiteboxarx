@@ -289,11 +289,9 @@ def get_implicit_encoded_round_funcions(
     assert 1 <= rounds
     assert rounds == len(implicit_affine_layers)  # 好像这句判断没啥用。。
 
-    bpr_pmodadd = implicit_affine_layers[0][0].parent()
+    bpr_pmodadd = implicit_affine_layers[0][0].parent()  # Boolean PolynomialRing in x0,...,x15,...,y15,....,z15,...,t15
+    # bpr_pmodadd.gens() 返回 [x0,...,x15,...,y15,....,z15,...,t15]
     ws = len(bpr_pmodadd.gens()) // 4
-
-    # wordsize is the bit-size of one of the inputs of the modular addition
-    # (half of the total blocksize since only 1 modular addition is supported)
 
     # filename表示debug文件
     smart_print = get_smart_print(filename)
@@ -309,8 +307,9 @@ def get_implicit_encoded_round_funcions(
 
     assert ws == len(bpr_pmodadd.gens()) // 4  # 好像这句判断没啥用。。
 
+    # implicit_pmodadd: 输入[x,y,z,t] 返回 [x^y^z, y^ t]
     implicit_pmodadd = [bpr_pmodadd(str(f)) for f in get_implicit_modadd_anf(ws, permuted=True, only_x_names=False)]
-
+    
     if not USE_REDUNDANT_PERTURBATIONS:
         num_ga = rounds  # 不使用RP
     else:

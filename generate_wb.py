@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 if __name__ == '__main__':
     parser = ArgumentParser(prog="sage -python generate_wb.py", description="Generate an implicit white-box implementation of a given ARX cipher")
     parser.add_argument("--input-file", help="the file containing the implicit (unencoded) and explicit affine layers")
-    parser.add_argument("-- ", type=int, choices=[2, 3, 4], help="the degree of the implicit encoded round functions")
+    parser.add_argument("--irf-degree", type=int, choices=[2, 3, 4], help="the degree of the implicit encoded round functions")
     parser.add_argument("--output-file", help="the file to store the implicit encoded round functions and the external excodings")
     parser.add_argument("--seed", type=int, default=0, help="the seed used to generate random values (default: 0)")
     parser.add_argument("--trivial-affine-encodings", action="store_true", help="use trivial affine encodings")
@@ -25,8 +25,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    assert not os.path.isfile(args.output_file), f"{args.output_file} already exists"  
-    assert args.debug_file is None or not os.path.isfile(args.debug_file), f"{args.debug_file} already exists"
+    # assert not os.path.isfile(args.output_file), f"{args.output_file} already exists"  
+    # assert args.debug_file is None or not os.path.isfile(args.debug_file), f"{args.debug_file} already exists"
 
     # 这里的隐函数应该为轮函数的隐函数
     # 这里应该是 implicit_unencoded_affine_layers
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     # degree of the implicit encoded round functions
     irf_degree = args.irf_degree  # irf 表示的是隐式的轮函数 implicit round function
 
-    if irf_degree == 2:  # 阶为2，E^{(i)}自等价使用Id
+    if irf_degree == 2:  # 阶为2，E^{(i)}的自等价使用Id
         from whiteboxarx.implicit_wb_with_affine_encodings import get_implicit_encoded_round_funcions
 
         # affine encodings
@@ -62,7 +62,7 @@ if __name__ == '__main__':
                 SEED, USE_REDUNDANT_PERTURBATIONS,
                 TRIVIAL_EE, TRIVIAL_GA, TRIVIAL_RP, TRIVIAL_AE,
                 PRINT_TIME_GENERATION, PRINT_DEBUG_GENERATION)
-    elif irf_degree == 3 or irf_degree == 4:  # 隐式的轮函数阶为3/4，使用二次编码
+    elif irf_degree == 3 or irf_degree == 4:  # 隐式的轮函数阶为3/4，E^{(i)}的自等价使用二次编码
         from whiteboxarx.implicit_wb_with_quadratic_encodings import get_implicit_encoded_round_funcions
 
         # quadratic encodings
@@ -72,5 +72,5 @@ if __name__ == '__main__':
                 SEED, (irf_degree == 3), MAX_DEG_IRF, USE_REDUNDANT_PERTURBATIONS,
                 TRIVIAL_EE, TRIVIAL_GA, TRIVIAL_RP, TRIVIAL_AE, TRIVIAL_QE,
                 PRINT_TIME_GENERATION, PRINT_DEBUG_GENERATION)
-
+    exit(1)
     sage.all.save((implicit_encoded_round_functions, explicit_extin_anf, explicit_extout_anf), args.output_file, compress=True)

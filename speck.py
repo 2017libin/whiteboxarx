@@ -157,9 +157,9 @@ def get_implicit_unencoded_affine_layers(
             
             # anf就是boo_poly的集合，其中每个boo_poly表示结果的每个bit
             anf = matrix2anf(matrix, bool_poly_ring=bpr_pmodadd, bin_vector=cta)  # anf(x,y,z,t) = (x',y',z,t)，(x',y')=affine(x,y)
-            if i == 0:
-                for j in list(anf):
-                    print(j)
+            # if i == 0:
+            #     for j in list(anf):
+            #         print(j)
             if not return_implicit_round_functions:
                 implicit_round_functions.append(anf)  # return_implicit_round_functions 为 false, 只返回隐式的仿射层 (y,x)
             else:
@@ -266,12 +266,12 @@ if __name__ == '__main__':
     speck_instance = speck_instances[args.block_size]
     rounds = speck_instance.default_rounds
 
-    # 返回的是轮函数的隐函数、还有轮函数中的仿射函数
-    # 这里的implicit_affine_layers 可能造成歧义
     implicit_affine_layers, explicit_affine_layers = get_implicit_unencoded_affine_layers(speck_instance, rounds, master_key, return_also_explicit_affine_layers=True)
     for i, affine_layer in enumerate(implicit_affine_layers):
         # Wrap in tuple because BooleanPolynomialVector can't be pickled.
         implicit_affine_layers[i] = tuple(affine_layer)
-    
+    print(len(list(explicit_affine_layers[0][0][0])))
+    for i in list(implicit_affine_layers[0]):
+        print(i)
     exit(1)
     sage.all.save((implicit_affine_layers, explicit_affine_layers), args.output_file, compress=True)  # 保存对象
