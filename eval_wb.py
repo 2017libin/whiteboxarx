@@ -56,22 +56,26 @@ def get_eval_implicit_wb_implementation(
             bpr_pmodadd = implicit_encoded_round_functions[0][0][0][0].parent()  # round 0, perturbed system 0, anf, component Boolean function 0
 
     # 
-    ordered_replacement = []
+    ordered_replacement = [None]*2*ws + list(bpr_pmodadd.gens()[2*ws: 4*ws])
     assert len(bpr_pmodadd.gens()) == 4*ws
-    for i in range(4*ws):
-        if i < 2*ws:
-            ordered_replacement.append(None)
-        else:
-            ordered_replacement.append(bpr_pmodadd.gens()[i])
-
+    # for i in range(4*ws):
+    #     if i < 2*ws:
+    #         ordered_replacement.append(None)
+    #     else:
+    #         ordered_replacement.append(bpr_pmodadd.gens()[i])
+    print(ordered_replacement)
     output_vars = bpr_pmodadd.gens()[2*ws: 4*ws]
 
-    # 
+    # v^(r+1) = eval_round_function(v, r)
     def eval_round_function(v, round_index):
         ordered_replacement_copy = ordered_replacement[:]
         for i in range(2 * ws):
             ordered_replacement_copy[i] = bpr_pmodadd(v[i])
-
+        if round_index == 1:
+            print(round_index)
+            print(ordered_replacement_copy)
+        
+        # DEBUG_SPLIT_RP 默认为 false
         if DEBUG_SPLIT_RP:
             implicit_rf = implicit_encoded_round_functions[round_index][0][0]
             system = [substitute_variables(bpr_pmodadd, ordered_replacement_copy, f) for f in implicit_rf]
@@ -104,17 +108,19 @@ def get_eval_implicit_wb_implementation(
             assert any(all(v_i == 0 for v_i in v) for v in list_perturbation_values)
             v0 = base_sol
         else:
+            
             list_outputs = []
 
             if not USE_REDUNDANT_PERTURBATIONS:
                 systems_in_round_i = [implicit_encoded_round_functions[round_index]]
                 assert len(systems_in_round_i) == 1
             else:
-                systems_in_round_i = implicit_encoded_round_functions[round_index]
+                systems_in_round_i = implicit_encoded_round_functions[round_index]  
                 assert len(systems_in_round_i) == 4
 
+            # 解方程
             for index_irf, implicit_rf in enumerate(systems_in_round_i):
-                system = [substitute_variables(bpr_pmodadd, ordered_replacement_copy, f) for f in implicit_rf]
+                system = [substitute_variables(bpr_pmodadd, ordered_replacement_copy, f) for f in implicit_rf]  # will check
 
                 if PRINT_DEBUG_INTERMEDIATE_VALUES:
                     smart_print(f" - {'' if USE_REDUNDANT_PERTURBATIONS else 'non-'}perturbed system {index_irf}:")
@@ -122,12 +128,13 @@ def get_eval_implicit_wb_implementation(
                         smart_print(f"   > equations                           : {implicit_rf}")
                         smart_print(f"   > (after substitution) equations      : {system}")
 
-                if not all(f.degree() <= 1 for f in system):  # assuming QUASILINEAR_RP is True
+                # 保证整个系统是仿射系统
+                if not all(f.degree() <= 1 for f in system):  # assuming QUASILINEAR_RP is True  # will check
                     raise ValueError(f"implicit round function {index_irf} is not quasilinear "
                                      f"(has degrees {[f.degree() for f in system]} after fixing the input variables)")
-
+                # **** 解方程？
                 try:
-                    fixed_vars, new_equations = find_fixed_vars(
+                    fixed_vars, new_equations = find_fixed_vars(  # will check
                         system, only_linear=True, initial_r_mode="gauss", repeat_with_r_mode=None,
                         initial_fixed_vars=None, bpr=bpr_pmodadd, check=False, verbose=False, debug=False, filename=None)
                 except ValueError as e:
@@ -135,14 +142,14 @@ def get_eval_implicit_wb_implementation(
                         raise ValueError(f"implicit round function {index_irf} has no solution, found error {e}")
                     if PRINT_DEBUG_INTERMEDIATE_VALUES:
                         smart_print(f"   > invalid perturbed system            : {e}")
-                    assert str(e).startswith("found 0 == 1")
+                    assert str(e).startswith("found 0 == 1")  # will check
                     continue
 
                 if PRINT_DEBUG_INTERMEDIATE_VALUES:
                     smart_print(f"   > (after solving) remaining equations : {list(new_equations)}")
                     smart_print(f"   > solution: {fixed_vars}", end="")
 
-                found_non_cta = any(v not in [0, 1] for v in fixed_vars.values())
+                    
                 if found_non_cta or len(new_equations) >= 1:
                     if not USE_REDUNDANT_PERTURBATIONS:
                         raise ValueError(f"implicit round function {index_irf} has no unique solution")
@@ -152,21 +159,22 @@ def get_eval_implicit_wb_implementation(
 
                 assert len(new_equations) == 0, f"{fixed_vars}\n{list(new_equations)}"
 
-                sol = [fixed_vars.get(v, None) for v in output_vars]
+                sol = [fixed_vars.get(v, None) for v in output_vars]  # will check
                 # v = sage.all.vector(sage.all.GF(2), sol)
                 if PRINT_DEBUG_INTERMEDIATE_VALUES:
                     smart_print(f" = {sol}")
 
-                if None in sol:
+                if None in sol:  
                     if not USE_REDUNDANT_PERTURBATIONS:
-                        raise ValueError(f"implicit round function {index_irf} has no unique solution")
+                        raise ValueError(f"implicit round function {index_irf} has no unique solution") # 存在非唯一解
                     if PRINT_DEBUG_INTERMEDIATE_VALUES:
                         smart_print(f"   > invalid perturbed system            : multiple solutions")
 
-                list_outputs.append(tuple(sol))
+                list_outputs.append(tuple(sol))  # list_outputs 放入的是元组, 如果满足每个方程的解都相同, 那么最后元组的长度只为1
+            # end for
 
             if not USE_REDUNDANT_PERTURBATIONS:
-                assert len(list_outputs) == 1
+                assert len(list_outputs) == 1  # 最后只有一组解
                 v0 = list_outputs[0]
             else:
                 assert 1 <= len(list_outputs) <= 4
@@ -183,10 +191,12 @@ def get_eval_implicit_wb_implementation(
 
         return sage.all.vector(sage.all.GF(2), v0)
 
+    # 返回该函数
     def eval_implicit_wb_implementation(v):
         if PRINT_INTERMEDIATE_VALUES:
             smart_print(f"\nplaintext | {hex(vector2int(v))} = {v}")
 
+        # 执行第一轮
         if first_explicit_round is not None and first_explicit_round != "":
             x, y = gf2vector_to_bitvectors(v, ws)
             locs = {"x": x, "y": y, "WORD_SIZE": ws, "WORD_MASK": 2**ws - 1}
@@ -196,11 +206,12 @@ def get_eval_implicit_wb_implementation(
                 smart_print(f"after first explicit round | {hex(vector2int(v))} = {v}")
 
         if explicit_extin_anf is not None:
-            v = [f(*v) for f in explicit_extin_anf]
+            v = [f(*v) for f in explicit_extin_anf]  # 先过外部的输入编码
             if PRINT_INTERMEDIATE_VALUES:
                 smart_print(f"Inverse of external input encodings:\n - output | {hex(vector2int(v))} = {v}")
                 smart_print("")
-
+        
+        # 执行中间轮
         for i in range(rounds):
             if PRINT_INTERMEDIATE_VALUES:
                 smart_print(f"Implicit round function {i}:")
@@ -281,10 +292,9 @@ if __name__ == '__main__':
     # the vector of words -> the vector of bits
     plaintext = bitvectors_to_gf2vector(*plaintext, ws)
     print(plaintext)
-    exit(1)
     ciphertext = eval_wb(plaintext)
     ciphertext = gf2vector_to_bitvectors(ciphertext, ws)
-
+    exit(1)
     if args.print_debug_intermediate_values:
         smart_print(f"\nCiphertext = ({ciphertext[0]:x}, {ciphertext[1]:x})\n")
     else:

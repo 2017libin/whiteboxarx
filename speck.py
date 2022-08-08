@@ -125,7 +125,7 @@ def get_implicit_unencoded_affine_layers(
     for i in range(len(round_keys)):
         round_keys[i] = bitvectors_to_gf2vector(round_keys[i], 0)
 
-    #  获取隐式表达式的组件 (x,y,z,t) = (x^y^z,y^t)
+    #  获取S函数的anf (x,y,z,t) = (x^y^z, y^t)
     implicit_pmodadd = get_implicit_modadd_anf(ws, permuted=True, only_x_names=only_x_names)  # if permuted=Ture, 返回(x,y,z)和 y^t 的 bool_poly, (x,y,z)的bool_poly等于0当且仅当x+y=z时
     bpr_pmodadd = implicit_pmodadd[0].parent()
     bpr_pmodadd = BooleanPolynomialRing(names=bpr_pmodadd.variable_names(), order="deglex")
@@ -157,7 +157,9 @@ def get_implicit_unencoded_affine_layers(
             
             # anf就是boo_poly的集合，其中每个boo_poly表示结果的每个bit
             anf = matrix2anf(matrix, bool_poly_ring=bpr_pmodadd, bin_vector=cta)  # anf(x,y,z,t) = (x',y',z,t)，(x',y')=affine(x,y)
-            
+            if i == 0:
+                for j in list(anf):
+                    print(j)
             if not return_implicit_round_functions:
                 implicit_round_functions.append(anf)  # return_implicit_round_functions 为 false, 只返回隐式的仿射层 (y,x)
             else:
