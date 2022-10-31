@@ -5,12 +5,13 @@ import sage.all
 
 from argparse import ArgumentParser
 
+# irf：implicit round functions的缩写，由于讨论的论函数都是带编码的，因此irf也相当于“带编码的轮函数的隐函数”的缩写
 
 if __name__ == '__main__':
     parser = ArgumentParser(prog="sage -python generate_wb.py", description="Generate an implicit white-box implementation of a given ARX cipher")
     parser.add_argument("--input-file", help="the file containing the implicit (unencoded) and explicit affine layers")
-    parser.add_argument("--irf-degree", type=int, choices=[2, 3, 4], help="the degree of the implicit encoded round functions")
-    parser.add_argument("--output-file", help="the file to store the implicit encoded round functions and the external excodings")
+    parser.add_argument("--irf-degree", type=int, choices=[2, 3, 4], help="the degree of the implicit encoded round functions")  
+    parser.add_argument("--output-file", help="the file to store the implicit encoded round functions and the external excodings")  # 
     parser.add_argument("--seed", type=int, default=0, help="the seed used to generate random values (default: 0)")
     parser.add_argument("--trivial-affine-encodings", action="store_true", help="use trivial affine encodings")
     parser.add_argument("--trivial-quadratic-encodings", action="store_true", help="use trivial quadratic encodings")
@@ -30,20 +31,20 @@ if __name__ == '__main__':
 
     # 这里的隐函数应该为轮函数的隐函数
     # 这里应该是 implicit_unencoded_affine_layers
-    unimplicit_encoded_affine_layers, unencoded_explicit_affine_layers = sage.all.load(args.input_file, compress=True)
+    implicit_unencoded_affine_layers, unencoded_explicit_affine_layers = sage.all.load(args.input_file, compress=True)
 
     SEED = args.seed
     sage.all.set_random_seed(SEED)
 
     TRIVIAL_AE = args.trivial_affine_encodings  # AE指的是(I,O)中的C
-    TRIVIAL_QE = args.trivial_quadratic_encodings  
+    TRIVIAL_QE = args.trivial_quadratic_encodings  # 
     TRIVIAL_EE = args.trivial_external_encodings  # EE指的是外部编码  
-    TRIVIAL_RP = args.trivial_redundant_perturbations
-    TRIVIAL_GA = args.trivial_graph_automorphisms
+    TRIVIAL_RP = args.trivial_redundant_perturbations  # 冗余扰乱
+    TRIVIAL_GA = args.trivial_graph_automorphisms  # 图自同构
     USE_REDUNDANT_PERTURBATIONS = not args.disable_redundant_perturbations
     MAX_DEG_IRF = not args.disable_max_degree
-    PRINT_TIME_GENERATION = args.print_time_generation
-    PRINT_DEBUG_GENERATION = args.print_debug_generation
+    PRINT_TIME_GENERATION = args.print_time_generation  # 打印生成时间
+    PRINT_DEBUG_GENERATION = args.print_debug_generation  # 打印调试信息
 
     if not USE_REDUNDANT_PERTURBATIONS:  # 不使用为True
         assert not TRIVIAL_RP
@@ -58,7 +59,7 @@ if __name__ == '__main__':
         # affine encodings
         ws, implicit_encoded_round_functions, explicit_extin_anf, explicit_extout_anf = \
             get_implicit_encoded_round_funcions(
-                unimplicit_encoded_affine_layers, args.debug_file,
+                implicit_unencoded_affine_layers, args.debug_file,
                 SEED, USE_REDUNDANT_PERTURBATIONS,
                 TRIVIAL_EE, TRIVIAL_GA, TRIVIAL_RP, TRIVIAL_AE,
                 PRINT_TIME_GENERATION, PRINT_DEBUG_GENERATION)
@@ -68,7 +69,7 @@ if __name__ == '__main__':
         # quadratic encodings
         ws, implicit_encoded_round_functions, explicit_extin_anf, explicit_extout_anf = \
             get_implicit_encoded_round_funcions(
-                unimplicit_encoded_affine_layers, unencoded_explicit_affine_layers, args.debug_file,
+                implicit_unencoded_affine_layers, unencoded_explicit_affine_layers, args.debug_file,
                 SEED, (irf_degree == 3), MAX_DEG_IRF, USE_REDUNDANT_PERTURBATIONS,
                 TRIVIAL_EE, TRIVIAL_GA, TRIVIAL_RP, TRIVIAL_AE, TRIVIAL_QE,
                 PRINT_TIME_GENERATION, PRINT_DEBUG_GENERATION)

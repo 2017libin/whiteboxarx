@@ -6,6 +6,7 @@ import os
 
 import sage.all
 
+# 从
 from boolcrypt.utilities import (
     substitute_variables, BooleanPolynomialRing, vector2int,
     int2vector, compose_affine, matrix2anf, compose_anf_fast, get_smart_print
@@ -17,11 +18,12 @@ from argparse import ArgumentParser
 
 # ws：一半的分组长度
 
+# block size: ws*2, master_key size: ws*m
 SpeckInstance = namedtuple('SpeckInstance', 'name, default_rounds, ws, m, alpha, beta')
 
 speck_instances = {
     8: SpeckInstance("Speck_8_16", 4, 4, 4, 2, 1),  # non-standard
-    32: SpeckInstance("Speck_32_64", 22, 16, 4, 7, 2),
+    32: SpeckInstance("Speck_32_64", 22, 16, 4, 7, 2),  
     64: SpeckInstance("Speck_64_128", 27, 32, 4, 8, 3),
     128: SpeckInstance("Speck_128_256", 34, 64, 4, 8, 3),
 }
@@ -73,7 +75,7 @@ def get_round_keys(speck_instance, rounds, master_key):
 
     return round_keys
 
-
+# speck_instance：结构体，其中包含'name, default_rounds, ws, m, alpha, beta'，ws表示一半的分组长度
 def get_implicit_unencoded_affine_layers(
         speck_instance, rounds, master_key, only_x_names=False,
         return_also_explicit_affine_layers=False,
@@ -100,8 +102,8 @@ def get_implicit_unencoded_affine_layers(
         [identity_matrix(ws - beta), zero_matrix(ws - beta, beta)]])
     assert ra.is_square() and lb.is_square()
 
-    ii = identity_matrix(ws)  # 16*16
-    zz = zero_matrix(ws, ws)  # 16*16
+    ii = identity_matrix(ws) 
+    zz = zero_matrix(ws, ws)
 
     # 以下的x、y均表示长度位ws的比特向量，矩阵均为2ws的方阵
     # identity_rotateleft_matrix * [x,y] = [x, y<<<beta]
@@ -117,50 +119,63 @@ def get_implicit_unencoded_affine_layers(
         [ii, zz],
         [ii, ii]])
     
+    
     def bitvectors_to_gf2vector(x, y):
+        # vector第一个参数表示向量元素所在的域为GF(2)
         return sage.all.vector(bpr, list(int2vector(x, ws)) + list(int2vector(y, ws)))
 
     # 生成轮密钥
-    round_keys = get_round_keys(speck_instance, rounds, master_key)
+    round_keys = get_round_keys(speck_instance, rounds, master_key)  # 生成轮函数
     for i in range(len(round_keys)):
-        round_keys[i] = bitvectors_to_gf2vector(round_keys[i], 0)
+        round_keys[i] = bitvectors_to_gf2vector(round_keys[i], 0)  # 由比特的序列转成gf2序列
 
     #  获取S函数的anf (x,y,z,t) = (x^y^z, y^t)
+    # 返回的是BooleanPolynomialVector类型对象
     implicit_pmodadd = get_implicit_modadd_anf(ws, permuted=True, only_x_names=only_x_names)  # if permuted=Ture, 返回(x,y,z)和 y^t 的 bool_poly, (x,y,z)的bool_poly等于0当且仅当x+y=z时
     bpr_pmodadd = implicit_pmodadd[0].parent()
     bpr_pmodadd = BooleanPolynomialRing(names=bpr_pmodadd.variable_names(), order="deglex")
-    implicit_pmodadd = [bpr_pmodadd(str(f)) for f in implicit_pmodadd]  # 转换为列表的形式  (x,y,z,t) = (x^y^z, y^t)
+    implicit_pmodadd = [bpr_pmodadd(str(f)) for f in implicit_pmodadd]  # 将BooleanPolynomialVector对象中的布尔多项式放到列表中
 
     # compose_affine(L_m, L_t, R_m, R_t)，返回(M,t)满足L_m(R_m*x+R_t)+L_t = M*x + t
     # [x, y] = [x>>>alpha, x^(y<<<beta)]
     aux_linear_layer = compose_affine(
         rotateright_identity_matrix, 0,  
         *(compose_affine(identity_xor_matrix, 0, identity_rotateleft_matrix, 0))  # [x,y] = [x, x^(y<<<beta)]
-    )[0] 
+    )[0]
 
-    # 
+    
     implicit_round_functions = []
     explicit_affine_layers = []
+    print_t = False
+    print(f"ws {ws}")
     for i in range(rounds):
-        # 生成 R-3 rounds 的仿射层
+        # 生成 第[0,R-3]轮 的仿射层
         if i not in [rounds - 2, rounds - 1]:
-            # round function is S \circ affine  E  = S \circ AL
+            # round function is S \circ affine  E  = Id_n \circ S \circ AL
             # 1. affine = compose_affine(identity_rotateleft_matrix, 0, identity_matrix(2*ws), round_keys[i])
             # 2. affine = compose_affine(identity_xor_matrix, 0, affine[0], affine[1])
             # 3. affine = compose_affine(rotateright_identity_matrix, 0, affine[0], affine[1])
             affine = compose_affine(aux_linear_layer, 0, identity_matrix(2*ws), round_keys[i])  # 相当于上面3步
             
-            matrix = sage.all.block_matrix(bpr, 2, 2, [  # 2n*2n matrix，n是分组长度
+            matrix = sage.all.block_matrix(bpr, 2, 2, [  # 2n*2n matrix，n是分组长度, 2ws = n
                 [affine[0], zero_matrix(2*ws, 2*ws)],
                 [zero_matrix(2*ws, 2*ws), identity_matrix(2*ws)]]) # 对角矩阵
             cta = list(affine[1]) + [0 for _ in range(2*ws)]  # 将affine[1] 转换为列表形式
-            
-            # anf就是boo_poly的集合，其中每个boo_poly表示结果的每个bit
+            # anf就是boo_poly的集合，其中每个bool_poly表示结果的每个bit
             anf = matrix2anf(matrix, bool_poly_ring=bpr_pmodadd, bin_vector=cta)  # anf(x,y,z,t) = (x',y',z,t)，(x',y')=affine(x,y)
+            # if not print_t:
+            #     for i,anf_t in enumerate(anf):
+            #         print(f"anf_{i}: {anf_t}")
+            #     for i,implicit_pmodadd_t in enumerate(implicit_pmodadd):
+            #         print(f"implicit_pmodadd_{i}: {implicit_pmodadd_t}")
+            #     for i,anf_t in enumerate(compose_anf_fast(implicit_pmodadd, anf)):
+            #         print(f"compose_{i}: {anf_t}")
+            #     print_t = True
             # if i == 0:
             #     for j in list(anf):
             #         print(j)
             if not return_implicit_round_functions:
+                # 只返回仿射变换
                 implicit_round_functions.append(anf)  # return_implicit_round_functions 为 false, 只返回隐式的仿射层 (y,x)
             else:
                 implicit_round_functions.append(compose_anf_fast(implicit_pmodadd, anf))  # 先过anf，再过implicit
@@ -263,15 +278,13 @@ if __name__ == '__main__':
     assert len(args.key) == 4, "key should be 4 words"  # 1 words = 2 bytes
     master_key = tuple(map(lambda k: int(k, 16), args.key))  # 把十六进制words转为十进制, master_key = (6424, 4368, 2312, 256)
     
-    speck_instance = speck_instances[args.block_size]
-    rounds = speck_instance.default_rounds
+    speck_instance = speck_instances[args.block_size]  # 类似于返回一个结构体
+    rounds = speck_instance.default_rounds  # 返回
 
     implicit_affine_layers, explicit_affine_layers = get_implicit_unencoded_affine_layers(speck_instance, rounds, master_key, return_also_explicit_affine_layers=True)
+    
     for i, affine_layer in enumerate(implicit_affine_layers):
         # Wrap in tuple because BooleanPolynomialVector can't be pickled.
         implicit_affine_layers[i] = tuple(affine_layer)
-    print(len(list(explicit_affine_layers[0][0][0])))
-    for i in list(implicit_affine_layers[0]):
-        print(i)
     exit(1)
     sage.all.save((implicit_affine_layers, explicit_affine_layers), args.output_file, compress=True)  # 保存对象

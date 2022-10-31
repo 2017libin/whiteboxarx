@@ -16,7 +16,6 @@ from argparse import ArgumentParser
 def bitvectors_to_gf2vector(x, y, ws):
     return sage.all.vector(sage.all.GF(2), list(int2vector(x, ws)) + list(int2vector(y, ws)))
 
-
 def gf2vector_to_bitvectors(v, ws):
     return vector2int(v[:ws]), vector2int(v[ws:])
 

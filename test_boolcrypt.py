@@ -55,8 +55,9 @@ def test_solve_functional_equation():
         verbose=True, debug=True)
     tmp = get_anf_coeffmatrix_str(result[0][0][0], input_vars=input_vars)  # f0
     print(list(result))
+
 if __name__ == "__main__":
     test_solve_functional_equation()
-
     # [[[<sage.rings.polynomial.pbori.pbori.BooleanPolynomialVector object at 0x7f1171d4ff80>], [<sage.rings.polynomial.pbori.pbori.BooleanPolynomialVector object at 0x7f1171d4ffc0>]]]
     # [[[<sage.rings.polynomial.pbori.pbori.BooleanPolynomialVector object at 0x7f18fb429300>, <sage.rings.polynomial.pbori.pbori.BooleanPolynomialVector object at 0x7f18fb4296c0>], [<sage.rings.polynomial.pbori.pbori.BooleanPolynomialVector object at 0x7f18fb429740>]]]
+    
