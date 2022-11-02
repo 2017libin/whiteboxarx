@@ -66,6 +66,7 @@ def get_random_affine_permutations(bitsize, number_of_permutations, TRIVIAL_AE, 
 
 # 获取编码：内部编码和外部编码
 def get_implicit_affine_round_encodings(wordsize, rounds, TRIVIAL_EE, TRIVIAL_AE):
+    # 因为(A,B)是Id，如果AE也是Id，那么EE不可能是不是id（not trivial）
     if not TRIVIAL_EE and TRIVIAL_AE:
         raise ValueError("using non-trivial external encoding with trivial affine encodings is not supported")
     
@@ -74,13 +75,13 @@ def get_implicit_affine_round_encodings(wordsize, rounds, TRIVIAL_EE, TRIVIAL_AE
     bpr = sage.all.GF(2)
     identity_matrix = partial(sage.all.identity_matrix, bpr)
     zero_matrix = partial(sage.all.zero_matrix, bpr)
-
+    
     names = ["x" + str(i) for i in range(ws)]
     names += ["y" + str(i) for i in range(ws)]
     names += ["z" + str(i) for i in range(ws)]
     names += ["t" + str(i) for i in range(ws)]
     bpr_pmodadd = BooleanPolynomialRing(names=names, order="deglex")
-
+    
     # bpr_ext = BooleanPolynomialRing(names=bpr_pmodadd.variable_names()[:2*ws], order="deglex")
     # identity_anf = bpr_pmodadd.gens()
 
@@ -106,7 +107,6 @@ def get_implicit_affine_round_encodings(wordsize, rounds, TRIVIAL_EE, TRIVIAL_AE
             cta = input_ee_cta + list(affine_encodings[i].cta)
             implicit_round_encodings[i] = matrix2anf(matrix, bool_poly_ring=bpr_pmodadd, bin_vector=cta)
         elif 1 <= i < rounds - 1:
-            # 为什么这里的输入编码不是上一轮输入的逆 ？ 
             matrix = sage.all.block_matrix(bpr, 2, 2, [
                 [affine_encodings[i-1].matrix, zero_matrix(2*ws, 2*ws)],
                 [zero_matrix(2*ws, 2*ws), affine_encodings[i].matrix]])
@@ -287,11 +287,11 @@ def get_implicit_encoded_round_funcions(
     """
     rounds = len(implicit_affine_layers)
     assert 1 <= rounds
-    assert rounds == len(implicit_affine_layers)  # 好像这句判断没啥用。。
+    assert rounds == len(implicit_affine_layers)
 
     bpr_pmodadd = implicit_affine_layers[0][0].parent()  # Boolean PolynomialRing in x0,...,x15,...,y15,....,z15,...,t15
     # bpr_pmodadd.gens() 返回 [x0,...,x15,...,y15,....,z15,...,t15]
-    ws = len(bpr_pmodadd.gens()) // 4
+    ws = len(bpr_pmodadd.gens()) // 4  # gens返回生成元个数，一共有四个输入，每个输入的大小就是ws
 
     # filename表示debug文件
     smart_print = get_smart_print(filename)
@@ -305,11 +305,12 @@ def get_implicit_encoded_round_funcions(
         smart_print(f" - TRIVIAL_EE, TRIVIAL_GA, TRIVIAL_RP, TRIVIAL_AE: {[TRIVIAL_EE, TRIVIAL_GA, TRIVIAL_RP, TRIVIAL_AE]}")
         smart_print()
 
-    assert ws == len(bpr_pmodadd.gens()) // 4  # 好像这句判断没啥用。。
+    assert ws == len(bpr_pmodadd.gens()) // 4
 
     # implicit_pmodadd: 输入[x,y,z,t] 返回 [x^y^z, y^ t]
     implicit_pmodadd = [bpr_pmodadd(str(f)) for f in get_implicit_modadd_anf(ws, permuted=True, only_x_names=False)]
     
+    # 是否使用RP
     if not USE_REDUNDANT_PERTURBATIONS:
         num_ga = rounds  # 不使用RP
     else:
@@ -320,9 +321,10 @@ def get_implicit_encoded_round_funcions(
         if PRINT_TIME_GENERATION:
             smart_print(f"{get_time()} | generated redundant perturbations")
 
-        num_ga = rounds * num_rp_per_round
+        num_ga = rounds * num_rp_per_round  # 原来的一轮变成了num_rp_per_round轮
 
     # 获取图自同构
+    print(f"求图自同构...")
     graph_automorphisms = get_graph_automorphisms(ws, num_ga, filename, TRIVIAL_GA, PRINT_DEBUG_GENERATION)
 
     if PRINT_TIME_GENERATION:
@@ -337,6 +339,8 @@ def get_implicit_encoded_round_funcions(
         smart_print(f"{get_time()} | generated implicit round encodings")
 
     # 获取左置换：只使用了M，没有用cta。相当于获取linear permutation
+    # 这里求的是V，是一个线性变换满足V(0)=0
+    print(f"求线性置换...")
     left_permutations = get_random_affine_permutations(2 * ws, rounds, TRIVIAL_AE, bpr=bpr_pmodadd)
 
     if PRINT_TIME_GENERATION:
@@ -345,17 +349,18 @@ def get_implicit_encoded_round_funcions(
     implicit_round_functions = []
     list_degs = []
     for i in range(rounds):
-        if not USE_REDUNDANT_PERTURBATIONS:  # 不使用RP
+        print(f"生成第{i}轮隐函数的anf表达式...")
+        if not USE_REDUNDANT_PERTURBATIONS:  # 不使用RP  
             anf = compose_anf_fast(implicit_pmodadd, graph_automorphisms[i])  # anf = T \circ U
             anf = compose_anf_fast(anf, implicit_affine_layers[i])  # anf = T \circ U \circ AL
             anf = compose_anf_fast(anf, implicit_round_encodings[i])  # anf = T \circ U \circ AL \circ RE
             anf = list(left_permutations[i].matrix * sage.all.vector(bpr_pmodadd, anf))  # anf = V \circ anf
             assert bpr_pmodadd == implicit_affine_layers[i][0].parent()
-
             degs = [f.degree() for f in anf]
             assert max(degs) == 2
-            list_degs.append(degs)  # 列表中放列表？
-
+            list_degs.append(degs)  # 列表中放列表，存放的是第i轮隐函数的anf表达式的阶数
+            for index, t1 in enumerate(anf):
+                print(f"{index}: {t1}")
             implicit_round_functions.append(anf)  # 隐式的轮函数
         else:
             list_anfs = []

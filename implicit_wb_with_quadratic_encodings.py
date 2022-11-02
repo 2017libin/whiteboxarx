@@ -18,7 +18,6 @@ from whiteboxarx.implicit_wb_with_affine_encodings import (
     get_graph_automorphisms, get_redundant_perturbations, get_implicit_affine_round_encodings, get_random_affine_permutations,
 )
 
-
 def get_explicit_affine_quadratic_se_encodings(wordsize, explicit_affine_layers, graph_automorphisms, filename, CUBIC_IRF, MAX_DEG_IRF, TRIVIAL_EE, TRIVIAL_QE, PRINT_DEBUG_GENERATION):
     ws = wordsize
 
@@ -49,7 +48,6 @@ def get_explicit_affine_quadratic_se_encodings(wordsize, explicit_affine_layers,
         return geaqse(wordsize, explicit_affine_layers, graph_automorphisms,
                       use_external_encodings=not TRIVIAL_EE, use_cubic_irf=CUBIC_IRF, ensure_max_degree=MAX_DEG_IRF,
                       verbose=PRINT_DEBUG_GENERATION, filename=filename)
-
 
 def get_implicit_encoded_round_funcions(
         implicit_affine_layers, explicit_affine_layers, filename,
@@ -113,25 +111,25 @@ def get_implicit_encoded_round_funcions(
 
         if PRINT_TIME_GENERATION:
             smart_print(f"{get_time()} | generated redundant perturbations")
-
+    
     implicit_round_functions = []
     list_degs = []
     for i in range(rounds):
         anf = compose_anf_fast(implicit_pmodadd, graph_automorphisms[i])  # T\circ U^(i)
         anf = compose_anf_fast(anf, implicit_affine_layers[i])  # T\circ U^(i)\circ affine
         aq_layer = tuple(bpr_pmodadd(str(f)) for f in explicit_affine_quadratic_se_encodings[i]) + bpr_pmodadd.gens()[2*ws:4*ws]  # 拼接元组
-        anf = compose_anf_fast(anf, aq_layer)  # T\circ U^(i)\circ affine\circ ((A^(i)\circ B^(i-1)). Id)
-        #
-        anf = compose_anf_fast(anf, implicit_affine_round_encodings[i])  # T\circ U^(i)\circ affine\circ ((A^(i)\circ B^(i-1)). Id) \circ (C^(i)^(-1),C^(i+1)^(-1))
-        anf = list(left_permutations[i].matrix * sage.all.vector(bpr_pmodadd, anf))  # V^(i) \circ T\circ U^(i)\circ affine\circ ((A^(i)\circ B^(i-1)). Id) \circ (C^(i)^(-1),C^(i+1)^(-1))
+        anf = compose_anf_fast(anf, aq_layer)  # T\circ U^(i)\circ affine\circ ((A^(i)\circ B^(i-1)), Id)
+        # 
+        anf = compose_anf_fast(anf, implicit_affine_round_encodings[i])  # T\circ U^(i)\circ affine\circ ((A^(i)\circ B^(i-1))\circ C^(i)^(-1), Id\circ C^(i+1)^(-1))
+        anf = list(left_permutations[i].matrix * sage.all.vector(bpr_pmodadd, anf))  # V^(i) \circ T\circ U^(i)\circ affine\circ ((A^(i)\circ B^(i-1))\circ C^(i)^(-1), Id\circ C^(i+1)^(-1))
         assert bpr_pmodadd == implicit_affine_layers[i][0].parent()
 
         degs = [f.degree() for f in anf]
         # if TRIVIAL_QE or (i == 0 and TRIVIAL_EE):  # input external encoding is affine
-        if TRIVIAL_QE or i == 0:
-            assert max(degs) == 2
+        if TRIVIAL_QE or i == 0:  
+            assert max(degs) == 2  # 第一轮的隐函数阶为2
         elif not MAX_DEG_IRF:
-            assert max(degs) >= 3
+            assert max(degs) >= 3  # 
         else:
             assert max(degs) == (3 if CUBIC_IRF else 4), f"{degs}, {i}/{rounds}"
         list_degs.append(degs)

@@ -24,7 +24,7 @@ def get_eval_implicit_wb_implementation(
         wordsize, implicit_encoded_round_functions,
         USE_REDUNDANT_PERTURBATIONS,
         PRINT_INTERMEDIATE_VALUES, PRINT_DEBUG_INTERMEDIATE_VALUES, filename=None,
-        explicit_extin_anf=None, explicit_extout_anf=None,
+        explicit_extin_anf=None, explicit_extout_anf= None,
         first_explicit_round=None, last_explicit_round=None,
         DEBUG_SPLIT_RP=False,
     ):
@@ -41,10 +41,12 @@ def get_eval_implicit_wb_implementation(
     in the implicit_encoded_round_functions).
     Similar for last_explicit_round.
     """
+    # 算出来的rounds是实际的rounds，比理论的rounds少1，因为第一轮不用通过隐函数来执行
     rounds = len(implicit_encoded_round_functions)
     ws = wordsize
 
     smart_print = get_smart_print(filename)
+
 
     if not USE_REDUNDANT_PERTURBATIONS:
         bpr_pmodadd = implicit_encoded_round_functions[0][0].parent()  # round 0, component Boolean function 0
@@ -62,17 +64,13 @@ def get_eval_implicit_wb_implementation(
     #         ordered_replacement.append(None)
     #     else:
     #         ordered_replacement.append(bpr_pmodadd.gens()[i])
-    print(ordered_replacement)
     output_vars = bpr_pmodadd.gens()[2*ws: 4*ws]
 
-    # v^(r+1) = eval_round_function(v, r)
+    # 使用第round_index (i)，v作为输入，P_i(v)作为输出
     def eval_round_function(v, round_index):
         ordered_replacement_copy = ordered_replacement[:]
         for i in range(2 * ws):
-            ordered_replacement_copy[i] = bpr_pmodadd(v[i])
-        if round_index == 1:
-            print(round_index)
-            print(ordered_replacement_copy)
+            ordered_replacement_copy[i] =  (v[i])  # 将v作为输入
         
         # DEBUG_SPLIT_RP 默认为 false
         if DEBUG_SPLIT_RP:
@@ -97,8 +95,8 @@ def get_eval_implicit_wb_implementation(
 
             list_perturbation_values = []
             for index_rp, (_, rp) in enumerate(implicit_encoded_round_functions[round_index]):
-                rp_system = [substitute_variables(bpr_pmodadd, ordered_replacement_copy, f) for f in rp]
-                list_perturbation_values.append(rp_system)
+                rp_system = [substitute_variables(bpr_pmodadd, ordered_replacement_copy, f) for f in rp]  
+                list_perturbation_values.append(rp_system)  # 实例化后的anf
                 if PRINT_DEBUG_INTERMEDIATE_VALUES:
                     smart_print(f"   - perturbed system {index_rp}:")
                     smart_print(f"     >> equations                        : {rp}")
@@ -107,11 +105,11 @@ def get_eval_implicit_wb_implementation(
             assert any(all(v_i == 0 for v_i in v) for v in list_perturbation_values)
             v0 = base_sol
         else:
-            
+            # 输出
             list_outputs = []
-
+            
             if not USE_REDUNDANT_PERTURBATIONS:
-                systems_in_round_i = [implicit_encoded_round_functions[round_index]]
+                systems_in_round_i = [implicit_encoded_round_functions[round_index]]  # 获取第i轮的隐函数的anf表达式
                 assert len(systems_in_round_i) == 1
             else:
                 systems_in_round_i = implicit_encoded_round_functions[round_index]  
@@ -119,7 +117,7 @@ def get_eval_implicit_wb_implementation(
 
             # 解方程
             for index_irf, implicit_rf in enumerate(systems_in_round_i):
-                system = [substitute_variables(bpr_pmodadd, ordered_replacement_copy, f) for f in implicit_rf]  # will check
+                system = [substitute_variables(bpr_pmodadd, ordered_replacement_copy, f) for f in implicit_rf]  # 这里的f是anf表达式，将里面的变量进行替换
 
                 if PRINT_DEBUG_INTERMEDIATE_VALUES:
                     smart_print(f" - {'' if USE_REDUNDANT_PERTURBATIONS else 'non-'}perturbed system {index_irf}:")
@@ -128,12 +126,12 @@ def get_eval_implicit_wb_implementation(
                         smart_print(f"   > (after substitution) equations      : {system}")
 
                 # 保证整个系统是仿射系统
-                if not all(f.degree() <= 1 for f in system):  # assuming QUASILINEAR_RP is True  # will check
+                if not all(f.degree() <= 1 for f in system):  # assuming QUASILINEAR_RP is True  # 替换x变量后的，关于z、t的表达式是一个仿射变换
                     raise ValueError(f"implicit round function {index_irf} is not quasilinear "
                                      f"(has degrees {[f.degree() for f in system]} after fixing the input variables)")
-                # **** 解方程？
                 try:
-                    fixed_vars, new_equations = find_fixed_vars(  # will check
+
+                    fixed_vars, new_equations = find_fixed_vars(
                         system, only_linear=True, initial_r_mode="gauss", repeat_with_r_mode=None,
                         initial_fixed_vars=None, bpr=bpr_pmodadd, check=False, verbose=False, debug=False, filename=None)
                 except ValueError as e:
@@ -148,7 +146,7 @@ def get_eval_implicit_wb_implementation(
                     smart_print(f"   > (after solving) remaining equations : {list(new_equations)}")
                     smart_print(f"   > solution: {fixed_vars}", end="")
 
-                    
+                found_non_cta = any(v not in [0, 1] for v in fixed_vars.values())
                 if found_non_cta or len(new_equations) >= 1:
                     if not USE_REDUNDANT_PERTURBATIONS:
                         raise ValueError(f"implicit round function {index_irf} has no unique solution")
@@ -157,8 +155,8 @@ def get_eval_implicit_wb_implementation(
                     continue
 
                 assert len(new_equations) == 0, f"{fixed_vars}\n{list(new_equations)}"
-
-                sol = [fixed_vars.get(v, None) for v in output_vars]  # will check
+                print(f"fixed_vars: {type(fixed_vars)}")
+                sol = [fixed_vars.get(v, None) for v in output_vars]
                 # v = sage.all.vector(sage.all.GF(2), sol)
                 if PRINT_DEBUG_INTERMEDIATE_VALUES:
                     smart_print(f" = {sol}")
@@ -199,13 +197,13 @@ def get_eval_implicit_wb_implementation(
         if first_explicit_round is not None and first_explicit_round != "":
             x, y = gf2vector_to_bitvectors(v, ws)
             locs = {"x": x, "y": y, "WORD_SIZE": ws, "WORD_MASK": 2**ws - 1}
-            exec(first_explicit_round, globals(), locs)
-            v = bitvectors_to_gf2vector(locs["x"], locs["y"], ws)
+            exec(first_explicit_round, globals(), locs)  # 执行第一轮加密
+            v = bitvectors_to_gf2vector(locs["x"], locs["y"], ws)  # 获取第一轮加密后的结构
             if PRINT_INTERMEDIATE_VALUES:
                 smart_print(f"after first explicit round | {hex(vector2int(v))} = {v}")
-
+        # 先过外部的输入编码
         if explicit_extin_anf is not None:
-            v = [f(*v) for f in explicit_extin_anf]  # 先过外部的输入编码
+            v = [f(*v) for f in explicit_extin_anf]  
             if PRINT_INTERMEDIATE_VALUES:
                 smart_print(f"Inverse of external input encodings:\n - output | {hex(vector2int(v))} = {v}")
                 smart_print("")
@@ -218,6 +216,7 @@ def get_eval_implicit_wb_implementation(
             if PRINT_INTERMEDIATE_VALUES:
                 smart_print(f" - output | {hex(vector2int(v))} = {v}")
 
+        # 再过最后的外部编码
         if explicit_extout_anf is not None:
             v = [f(*v) for f in explicit_extout_anf]
             if PRINT_INTERMEDIATE_VALUES:
@@ -260,6 +259,13 @@ if __name__ == '__main__':
 
     implicit_encoded_round_functions, explicit_extin_anf, explicit_extout_anf = sage.all.load(args.input_file, compress=True)
 
+    print(len(implicit_encoded_round_functions[0][0]))
+    print(len(implicit_encoded_round_functions[0][1]))
+    print(len(implicit_encoded_round_functions[0][2]))
+    print(len(implicit_encoded_round_functions[0][3]))
+
+    # fixed_vars, new_eqs = find_fixed_vars(implicit_encoded_round_functions[0], verbose=True, debug=True) 
+    exit(0)
     # 如果没有外部编码
     if not args.cancel_external_encodings:
         explicit_extin_anf, explicit_extout_anf = None, None
@@ -273,6 +279,7 @@ if __name__ == '__main__':
 
     ws = len(bpr_pmodadd.gens()) // 4
 
+    # 获取白盒执行
     eval_wb = get_eval_implicit_wb_implementation(
         ws, implicit_encoded_round_functions, USE_REDUNDANT_PERTURBATIONS,
         args.print_intermediate_values, args.print_debug_intermediate_values, filename=args.output_file,
@@ -289,11 +296,12 @@ if __name__ == '__main__':
     if args.print_debug_intermediate_values:
         smart_print(f"Evaluating implicit white-box implementation with input ({plaintext[0]:x}, {plaintext[1]:x})\n")
     # the vector of words -> the vector of bits
+    print(f"plaintext: {plaintext}")
     plaintext = bitvectors_to_gf2vector(*plaintext, ws)
-    print(plaintext)
     ciphertext = eval_wb(plaintext)
     ciphertext = gf2vector_to_bitvectors(ciphertext, ws)
-    exit(1)
+    print(f"ciphertext: {ciphertext}")
+    # exit(1)
     if args.print_debug_intermediate_values:
         smart_print(f"\nCiphertext = ({ciphertext[0]:x}, {ciphertext[1]:x})\n")
     else:

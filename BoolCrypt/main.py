@@ -47,8 +47,23 @@ def sample_compose_anf_fast():
 
     # 先过anf 再过 inversion
     for p in compose_anf_fast(inversion, anf): print(p)
+
+from sage.crypto.sbox import SBox
+from boolcrypt.utilities import lut2anf
+from boolcrypt.functionalequations import reduce, find_fixed_vars
+def sample_find_fixed_vars():
+    sbox3b = SBox((0, 1, 2, 3, 4, 6, 7, 5))
+    sbox3b_anf = lut2anf(list(sbox3b))
+    print(list(sbox3b_anf))
+
+    bpr = BooleanPolynomialRing(6, "y0, y1, y2, x0, x1, x2", order="lex")
+    input_vars, output_vars = list(reversed(bpr.gens()[3:])), list(reversed(bpr.gens()[:3]))
+    eqs = [bpr(f) for f in sbox3b.polynomials(X=input_vars, Y=output_vars)]
+    print(f"eqs:\n{eqs}")
+    fixed_vars, new_eqs = find_fixed_vars(eqs, only_linear=False, verbose=True, debug=True)
+    print(f"fixed_vars\n{fixed_vars}new_eqs\n{list(new_eqs)}")
 if __name__ == "__main__":
-    # sample_se()
+    # sample_se)(
     # x = PolynomialRing(GF(2**4), 'x').gen()
     # s = "0231"
     # lut = hex_string2lut(s, 1)
@@ -67,6 +82,7 @@ if __name__ == "__main__":
     # print(poly*poly1)
     # x = PolynomialRing(GF(2**4), 'x').gen()
     # mat2 = lut2matrix(poly2lut(x), return_ct=True)
-    sample_compose_anf_fast()
+    # sample_compose_anf_fast()
+    sample_find_fixed_vars()
 
 

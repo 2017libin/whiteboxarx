@@ -37,11 +37,12 @@ if __name__ == '__main__':
     sage.all.set_random_seed(SEED)
 
     TRIVIAL_AE = args.trivial_affine_encodings  # AE指的是(I,O)中的C
-    TRIVIAL_QE = args.trivial_quadratic_encodings  # 
-    TRIVIAL_EE = args.trivial_external_encodings  # EE指的是外部编码  
+    TRIVIAL_QE = args.trivial_quadratic_encodings  # QE指的是仿射-二次自等价
+    TRIVIAL_EE = args.trivial_external_encodings  # EE指的是外部编码
     TRIVIAL_RP = args.trivial_redundant_perturbations  # 冗余扰乱
     TRIVIAL_GA = args.trivial_graph_automorphisms  # 图自同构
     USE_REDUNDANT_PERTURBATIONS = not args.disable_redundant_perturbations
+    USE_REDUNDANT_PERTURBATIONS = False
     MAX_DEG_IRF = not args.disable_max_degree
     PRINT_TIME_GENERATION = args.print_time_generation  # 打印生成时间
     PRINT_DEBUG_GENERATION = args.print_debug_generation  # 打印调试信息
@@ -49,6 +50,7 @@ if __name__ == '__main__':
     if not USE_REDUNDANT_PERTURBATIONS:  # 不使用为True
         assert not TRIVIAL_RP
         TRIVIAL_RP = None
+    print(USE_REDUNDANT_PERTURBATIONS)
 
     # degree of the implicit encoded round functions
     irf_degree = args.irf_degree  # irf 表示的是隐式的轮函数 implicit round function
@@ -63,7 +65,8 @@ if __name__ == '__main__':
                 SEED, USE_REDUNDANT_PERTURBATIONS,
                 TRIVIAL_EE, TRIVIAL_GA, TRIVIAL_RP, TRIVIAL_AE,
                 PRINT_TIME_GENERATION, PRINT_DEBUG_GENERATION)
-    elif irf_degree == 3 or irf_degree == 4:  # 隐式的轮函数阶为3/4，E^{(i)}的自等价使用二次编码
+        print(f"二阶-隐函数个数：{len(implicit_encoded_round_functions)}, 隐函数的长度: {len(implicit_encoded_round_functions[0])}")
+    elif irf_degree == 3 or irf_degree == 4:  # 隐式的轮函数阶为3/4，E^{(i)}的自等价使用仿射-二次编码
         from whiteboxarx.implicit_wb_with_quadratic_encodings import get_implicit_encoded_round_funcions
 
         # quadratic encodings
@@ -73,5 +76,6 @@ if __name__ == '__main__':
                 SEED, (irf_degree == 3), MAX_DEG_IRF, USE_REDUNDANT_PERTURBATIONS,
                 TRIVIAL_EE, TRIVIAL_GA, TRIVIAL_RP, TRIVIAL_AE, TRIVIAL_QE,
                 PRINT_TIME_GENERATION, PRINT_DEBUG_GENERATION)
+        print(f"三/四阶-隐函数个数：{len(implicit_encoded_round_functions)}")
     exit(1)
     sage.all.save((implicit_encoded_round_functions, explicit_extin_anf, explicit_extout_anf), args.output_file, compress=True)

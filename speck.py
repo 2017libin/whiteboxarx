@@ -160,7 +160,7 @@ def get_implicit_unencoded_affine_layers(
             matrix = sage.all.block_matrix(bpr, 2, 2, [  # 2n*2n matrix，n是分组长度, 2ws = n
                 [affine[0], zero_matrix(2*ws, 2*ws)],
                 [zero_matrix(2*ws, 2*ws), identity_matrix(2*ws)]]) # 对角矩阵
-            cta = list(affine[1]) + [0 for _ in range(2*ws)]  # 将affine[1] 转换为列表形式
+            cta = list(affine[1]) + [0 for _ in range(2*ws)]  # 将affine[1]拼上0
             # anf就是boo_poly的集合，其中每个bool_poly表示结果的每个bit
             anf = matrix2anf(matrix, bool_poly_ring=bpr_pmodadd, bin_vector=cta)  # anf(x,y,z,t) = (x',y',z,t)，(x',y')=affine(x,y)
             # if not print_t:
@@ -282,7 +282,7 @@ if __name__ == '__main__':
     rounds = speck_instance.default_rounds  # 返回
 
     implicit_affine_layers, explicit_affine_layers = get_implicit_unencoded_affine_layers(speck_instance, rounds, master_key, return_also_explicit_affine_layers=True)
-    
+
     for i, affine_layer in enumerate(implicit_affine_layers):
         # Wrap in tuple because BooleanPolynomialVector can't be pickled.
         implicit_affine_layers[i] = tuple(affine_layer)
