@@ -1,6 +1,7 @@
 from sympy.ntheory.modular import isprime
 import math
 import random
+import gmpy2
 
 a = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFC
 b = 0x5AC635D8AA3A93E7B3EBBD55769886BC651D06B0CC53B0F63BCE3C3E27D2604B
@@ -24,13 +25,16 @@ class point:
         res = str(hex(self.x)) + ' ' + str(hex(self.y))
         return res
 
+    def __add__(self, other):
+        return pointadd(self, other)
 O = point(0, 0)
 G = point(Gx, Gy)
 
 def inv(x, p):
     x %= p
     # assert isprime(p)
-    return pow(x, -1, p)
+    return gmpy2.invert(x, p)
+    # return pow(x, -1, p)
 
 def ispointin(G: point):
     left = G.y * G.y
