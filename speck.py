@@ -96,6 +96,7 @@ def get_implicit_unencoded_affine_layers(
     ra = sage.all.block_matrix(bpr, 2, 2, [
         [zero_matrix(ws - alpha, alpha), identity_matrix(ws - alpha)],
         [identity_matrix(alpha), zero_matrix(alpha, ws - alpha)]])
+
     # lb: 表示循环左移beta位
     lb = sage.all.block_matrix(bpr, 2, 2, [
         [zero_matrix(beta, ws - beta), identity_matrix(beta)],
@@ -143,7 +144,6 @@ def get_implicit_unencoded_affine_layers(
         *(compose_affine(identity_xor_matrix, 0, identity_rotateleft_matrix, 0))  # [x,y] = [x, x^(y<<<beta)]
     )[0]
 
-    
     implicit_round_functions = []
     explicit_affine_layers = []
     print_t = False

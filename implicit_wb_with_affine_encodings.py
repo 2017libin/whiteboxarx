@@ -19,7 +19,6 @@ _DEBUG_SPLIT_RP = False  # do not merge the redundant perturbations with the imp
 # 类似结构体？
 AffineEncoding = collections.namedtuple('AffineEncoding', ['matrix', 'cta', 'bitsize', 'inverse'])
 
-
 # 获取bitsize的随机affine置换，返回(M,cta)，其中M是可逆
 # TRIVIAL_AE为True，返回的是(Id,0)
 def get_random_affine_permutations(bitsize, number_of_permutations, TRIVIAL_AE, bpr=None):

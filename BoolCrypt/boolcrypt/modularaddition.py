@@ -84,8 +84,8 @@ def get_modadd_anf(wordsize, permuted=False, only_x_names=True):
     if permuted:
         for i in range(wordsize):
             anf.append(y[i])
-
     return anf
+
 
 
 def get_implicit_modadd_anf(wordsize, permuted=False, only_x_names=True):

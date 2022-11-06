@@ -1,8 +1,13 @@
+import sys
+sys.path.append('./BoolCrypt')
 from sage.all import *
 from sage.crypto.sbox import SBox
-from boolcrypt.utilities import *
+from boolcrypt.utilities import (
+    BooleanPolynomialRing, vector2int, int2vector, compose_affine, matrix2anf, compose_anf_fast,
+    get_smart_print, get_anf_coeffmatrix_str, lut2anf,get_symbolic_anf, anf2matrix)
 from boolcrypt.functionalequations import reduce, find_fixed_vars, solve_functional_equation
-
+from boolcrypt.modularaddition import get_implicit_modadd_anf, get_modadd_anf
+from collections import OrderedDict
 def test_find_fixed_vars():
     sbox3b = SBox((3, 2, 0, 1))  # one linear component
     anf_l1 = list(lut2anf(list(sbox3b)))
@@ -56,8 +61,42 @@ def test_solve_functional_equation():
     tmp = get_anf_coeffmatrix_str(result[0][0][0], input_vars=input_vars)  # f0
     print(list(result))
 
+
+def test_implicit_pmodadd_unencoded():
+    ws = 2
+
+    implicit_pmodadd = get_implicit_modadd_anf(ws, permuted=False, only_x_names=False)
+
+    eqs = list(implicit_pmodadd)
+    for index, eq in enumerate(eqs):
+        print(f'eq{index}: {eq}')
+
+    # 构建system：指明输入/输出变量、表达式
+    names = implicit_pmodadd[0].parent().variable_names()[::-1]  # 将z变量放到前面
+    bpr_pmodadd = BooleanPolynomialRing(names=names, order="deglex")
+    system = [bpr_pmodadd(str(f)) for f in eqs]  # 将BooleanPolynomialVector对象中的布尔多项式放到列表中
+
+    # 默认使用后面的变量来表示前面的变量
+    fixed_vars, new_equations = find_fixed_vars(system)
+
+    # 打印固定的变量
+    # 将原来的字典逆序排序
+    fixed_vars = OrderedDict(sorted(fixed_vars.items(), key=lambda t: t[0],reverse = False))
+    for var, value in fixed_vars.items():
+        print(f'{var} = {value}')
+
+    # 打印化简后的表达式
+    for index, eq in enumerate(new_equations):
+        print(f'new_eqP{index}: {eq}')
+
+    modadd_anf = get_modadd_anf(ws, only_x_names=False)
+    for index, anf in enumerate(modadd_anf):
+        print(f'anf{index}: {anf}')
+
+
 if __name__ == "__main__":
-    test_solve_functional_equation()
+    test_implicit_pmodadd_unencoded()
+    # test_solve_functional_equation()
     # [[[<sage.rings.polynomial.pbori.pbori.BooleanPolynomialVector object at 0x7f1171d4ff80>], [<sage.rings.polynomial.pbori.pbori.BooleanPolynomialVector object at 0x7f1171d4ffc0>]]]
     # [[[<sage.rings.polynomial.pbori.pbori.BooleanPolynomialVector object at 0x7f18fb429300>, <sage.rings.polynomial.pbori.pbori.BooleanPolynomialVector object at 0x7f18fb4296c0>], [<sage.rings.polynomial.pbori.pbori.BooleanPolynomialVector object at 0x7f18fb429740>]]]
     
