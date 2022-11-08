@@ -1,7 +1,9 @@
 import sage.all
+from sage.all import *
 from ectools import *
 import collections
 Affine = collections.namedtuple('Affine', ['matrix', 'vector', 'size', 'inverse'])
+p = 13
 
 def random_affines(size, field, number):
     # field = sage.all.GF(modulu)
@@ -110,37 +112,91 @@ def sign_e1(e):
 def sign_e2():
     pass
 
-def solve_equation(prs, fixed_vars, all_vars):
-    eqs = []
-    vars_num = len(all_vars)
+# 替换方程组中变量的值
+def eqs_subs(eqs, fixed_vars):
+    try:
+        new_eqs = []
+        for eq in eqs:
+            new_eqs.append(eq.subs(fixed_vars))
+        return new_eqs
+    except:
+        return eqs
 
-    for i in range(vars_num):
-        eqs.append(prs[i]==0)
+# 对方程组进行规约
+def eqs_reduce(eqs):
+    try:
+        return list(Sequence(eqs).reduced())
+    except:
+        return eqs
 
-    return sage.all.solve(eqs+fixed_vars, all_vars)
+def _eq_solve(eq, pring):
+    try:
+        # print(eq, pring)
+        roots = pring(str(eq)).roots()
+        # print(roots)
+        return roots[0][0]
+    except:
+        return None
 
+# 对方程组进行求解
+def eqs_solve(eqs, fixed_vars, pring):
+    ans = {}
+    while len(eqs) > 0:
+        eqs = eqs_subs(eqs, fixed_vars)  # 替换变量
+        # print(type(eqs))
+        # print(f'after subs: eqs = {eqs}')
+        eqs = eqs_reduce(eqs)  # 化简方程组
+        # print(type(eqs))
+        # print(eqs)
+        # print(f'after reduce: eqs = {_eq_solve(eqs[0], pring)}')
+        find = False
+        for index, eq in enumerate(eqs):
+            for name in eq.parent().variable_names():
+                try:
+                    # print(f'name = {name}')
+                    pring = PolynomialRing(GF(p), names=name)
+                    val =  _eq_solve(eq, pring)
+                    # print(f'val = {val}')
+                    if val:
+                        fixed_vars[name] = val
+                        ans[name] = val
+                        # print(eqs)
+                        eqs.pop(index)
+                        # print(eqs)
+                        find = True
+                except:
+                    continue
+            if find:
+                break
+
+    print(ans)
 
 def test_affine():
-    field = sage.all.GF(13)
-    size = 3
-    polyr = sage.all.PolynomialRing(field, size, "z")
-    z = polyr.gens()
+    field = sage.all.GF(p)
+    size = 4
+
+    pring = sage.all.PolynomialRing(field, size, "z")
+    z = pring.gens()
 
     # x,y,z = sage.all.var('x'), sage.all.var('y'), sage.all.var('y'),
     # vs = sage.all.VectorSpace(field, size)
-
     affs = random_affines(size, field, 2)
-    z = affine_encode(affs[0], z)
+    new_z = affine_encode(affs[0], z)
 
-    pr = z[0]**2 + z[1] + 3*z[2]
+    pr1 = z[0] + 5*z[1] + 3*z[2]*z[3]
+    pr2 = z[0]**2 + z[1] + 4*z[2]
 
-    fixed_vars = []
-    fixed_vars.append(z[0]==3)
-    fixed_vars.append(z[1]==5)
-    print(solve_equation(pr, fixed_vars, z))
+    fixed_vars = {}
+    fixed_vars[z[0]] = 3
+    fixed_vars[z[1]] = 5
+    eqs = [pr1, pr2]
+    # print(eqs)
+    # print(fixed_vars)
+    # print(eqs)
+    # print(eqs_reduce(eqs))
 
-
-
+    eqs_solve(eqs, fixed_vars, PolynomialRing(field, name='z'))
+    # solve_equation(eqs, fixed_vars)
     # ret = []
     # print(affs[0].matrix)
     # print(affs[0].vector)
@@ -157,8 +213,21 @@ def test_affine():
     # x = affs[0].vector
 
     # print(affine_encode(affs[0], vec1))
-if __name__ == '__main__':
 
+def test_sovle_multipolynomials():
+    x = PolynomialRing(GF(7), 'x').gen()
+    f = x - 1
+    root = f.roots()  # 返回的是根和根的次数
+    print(root)
+
+    R = PolynomialRing(QQ, 2, 'ab')
+    a, b = R.gens()
+    I = (a**2 - b**2 - 3, a - 2 * b) * R
+    B = I.groebner_basis()
+    print(B)
+
+if __name__ == '__main__':
+    # test_sovle_multipolynomials()
     # ki0_list = []
     # ki1_list = []
     # Gi0_list = []

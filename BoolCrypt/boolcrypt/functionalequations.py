@@ -156,7 +156,11 @@ def _is_fixed_var(var, eq, bpr):
     return True
     # return var not in [bpr(v) for v in (eq + var).variables()]
 
-
+# 返回(var, val, PE, UV)
+# var表示可以替换的变量
+# val表示替换后的值
+# PE表示在pre_eqs中可以被更新的eq的序号
+# UV表示在fixedvar2expr中可以被更新的expr的变量名
 def _find_fix_var(eq, only_linear=False, prev_eqs=None, fixedvar2ct=None, fixedvar2expr=None,
                   bpr=None, check=True, verbose=False, filename=None, indentation_lvl=0):
     """Find one fixed variable in a Boolean equation given by a Boolean polynomial.
@@ -213,6 +217,7 @@ def _find_fix_var(eq, only_linear=False, prev_eqs=None, fixedvar2ct=None, fixedv
     if prev_eqs is None:
         prev_eqs = []
 
+    # 替换变量的值
     slow_sub = bpr.n_variables() < 32
     if not slow_sub:
         base_ordered_replacement = []
@@ -369,13 +374,16 @@ def find_fixed_vars(equations, only_linear=False, initial_r_mode=None, repeat_wi
         (OrderedDict([(y, 1)]), [x*z*t + x + z])
 
     """
+
     smart_print = get_smart_print(filename)
 
+    # 如果方程和初始化的固定变量都为空，则返回 None
     if len(equations) == 0:
         if initial_fixed_vars is None:
             initial_fixed_vars = collections.OrderedDict()
         return initial_fixed_vars, equations
 
+    # 初始化变量不为空，初始化变量可以是常数[0,1]也可以是表达式
     if initial_fixed_vars is not None:
         var2ct = collections.OrderedDict()
         var2expr = collections.OrderedDict()
@@ -388,9 +396,10 @@ def find_fixed_vars(equations, only_linear=False, initial_r_mode=None, repeat_wi
         var2ct = collections.OrderedDict()
         var2expr = collections.OrderedDict()
 
+    # 如果布尔多项式环为空
     if bpr is None:
-        bpr = equations[0].parent()
-    assert all(eq.parent() == bpr for eq in equations)
+        bpr = equations[0].parent()  # 从方程中获取
+    assert all(eq.parent() == bpr for eq in equations)  # 所有的多项式/方程都属于同一个布尔多项式环
     bpr_gens_dict = bpr.gens_dict()
 
     if debug:
@@ -411,9 +420,9 @@ def find_fixed_vars(equations, only_linear=False, initial_r_mode=None, repeat_wi
         smart_print("finding fixed variables {}".format(aux))
 
     ordered_replacement = []
-    var2index_ordered_replacement = {}
+    var2index_ordered_replacement = {}  # 有序的变量替换，item为 var:var_index
     for index_var, var in enumerate(bpr.gens()):
-        var2index_ordered_replacement[var] = index_var
+        var2index_ordered_replacement[var] = index_var  # var:var_index
         if var in var2ct:
             value = var2ct[var]
         elif var in var2expr:
@@ -432,22 +441,24 @@ def find_fixed_vars(equations, only_linear=False, initial_r_mode=None, repeat_wi
     # backward substitution with an upper triangular matrix (starting with the last equation)
     equations = list(equations)  # need to be a list to use pop()
     new_equations = []  # need to be a list to remove elements
-    while len(equations) > 0:
+    while len(equations) > 0:  # 直到算出所有的等式都为0
         index_eq = len(equations) - 1
 
         if check_find_fix_var is False and equations[-1].degree() >= 2:
             check_find_fix_var = True
 
-        eq = equations.pop(-1)
+        eq = equations.pop(-1)  # 获取并删除最后一个eq
         # only need to sub previous equations and fixed_vars
         new_eq = substitute_variables(bpr, ordered_replacement, eq)
         # new_eq = bpr(eq.subs(var2ct).subs(var2expr))
 
+        # 判断方程组的值是否为1，如果为1则表示无解
         if new_eq == 0:
             continue
         elif new_eq == 1:
             raise ValueError(f"found 0 == 1 from eqs[{index_eq}] = ({eq}).subs({var2ct, var2expr})")
 
+        #
         if debug:
             if new_eq != eq:
                 aux = " | before substitution {}".format(_sp(eq))
@@ -455,6 +466,7 @@ def find_fixed_vars(equations, only_linear=False, initial_r_mode=None, repeat_wi
                 aux = ""
             smart_print("\teqs[{}] = {}{}".format(index_eq, _sp(new_eq), aux))
 
+        # 求解
         result = _find_fix_var(new_eq, only_linear=only_linear, prev_eqs=new_equations,
                                fixedvar2ct=var2ct, fixedvar2expr=var2expr, bpr=bpr, check=check_find_fix_var,
                                verbose=debug, filename=filename, indentation_lvl=2 if debug else 1)
@@ -462,7 +474,7 @@ def find_fixed_vars(equations, only_linear=False, initial_r_mode=None, repeat_wi
             var, val, prev_eqs_with_fv, updated_vars = result
             if val in [0, 1]:
                 var2ct[var] = val
-                ordered_replacement[var2index_ordered_replacement[var]] = val
+                ordered_replacement[var2index_ordered_replacement[var]] = val  # 更新替换后的值
             else:
                 var2expr[var] = val
                 ordered_replacement[var2index_ordered_replacement[var]] = val
@@ -474,7 +486,7 @@ def find_fixed_vars(equations, only_linear=False, initial_r_mode=None, repeat_wi
                     aux = new_equations[index_eq_w_fv]
                     del new_equations[index_eq_w_fv]
                     equations.append(aux)
-            for u_v in updated_vars:
+            for u_v in updated_vars:  # 更新的变量，u_v表示update_var
                 if debug:
                     smart_print("\t\tupdating ordered_replacement with updated_vars", updated_vars)
                 if u_v in var2ct:
